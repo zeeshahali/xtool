@@ -62,6 +62,7 @@ OVERVIEW: Cross-platform Xcode replacement
 USAGE: xtool <subcommand>
 
 OPTIONS:
+  --version               Show the version.
   -h, --help              Show help information.
 
 CONFIGURATION SUBCOMMANDS:
@@ -82,6 +83,48 @@ DEVICE SUBCOMMANDS:
   launch                  Launch an installed app
 
   See 'xtool help <subcommand>' for detailed help.
+```
+
+Build an Xcode project, such as a Unity export, into an app or IPA:
+
+```bash
+$ xtool xcodebuild --help
+OVERVIEW: Build an Xcode project (.xcodeproj) into an iOS app or IPA
+
+USAGE: xtool xcodebuild [--project <project>] [--target <target>] [--configuration <configuration>] [--build-dir <build-dir>] [--jobs <jobs>] [--run-scripts] [--sign] [--ipa] [--output <output>] [--verbose] [--list] [<settings> ...]
+
+ARGUMENTS:
+  <settings>              Build setting overrides in the form KEY=VALUE.
+
+OPTIONS:
+  --project, -project <project>
+                          Path to the .xcodeproj to build. Defaults to the only .xcodeproj in the
+                          current directory.
+  --target, -target <target>
+                          Target to build. Defaults to the first application target.
+  -c, --configuration, -configuration <configuration>
+                          Build configuration, e.g. Debug or Release. Defaults to the project's
+                          default.
+  --build-dir <build-dir> Directory for build products and intermediates. Defaults to <project
+                          dir>/build.
+  -j, --jobs <jobs>       Number of parallel compile jobs. (default: number of CPU cores)
+  --run-scripts           Run 'Run Script' build phases (skipped by default since they often call
+                          macOS-only tools).
+  -s, --sign              Codesign the built app with your Apple ID (requires `xtool auth`).
+  -i, --ipa               Output a .ipa file instead of a .app
+  -o, --output <output>   Where to write the final .app or .ipa. Defaults to the build directory.
+  -v, --verbose           Print every command that is executed.
+  --list                  List the project's targets and configurations, then exit.
+  --version               Show the version.
+  -h, --help              Show help information.
+```
+
+For example, to build a Unity export into an unsigned IPA, or a signed one you can install:
+
+```bash
+cd Builds/iOS
+xtool xcodebuild --ipa
+xtool xcodebuild --ipa --sign -o Game.ipa && xtool install Game.ipa
 ```
 
 ### Library
