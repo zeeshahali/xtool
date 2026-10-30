@@ -107,7 +107,6 @@ Don't build these over newer distro packages (as on Arch). That overwrites files
 ```bash
 git clone https://github.com/zeeshahali/xtool
 cd xtool
-git checkout claude/happy-bell-asigux  # has `xtool xcodebuild`, until it's merged
 swift build -c release --product xtool
 sudo install -m755 .build/release/xtool /usr/local/bin/xtool
 xtool --help
