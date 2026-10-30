@@ -173,6 +173,7 @@ let package = Package(
                 .product(name: "X509", package: "swift-certificates"),
                 .product(name: "CustomDump", package: "swift-custom-dump"),
             ],
+            exclude: ["Fixtures"],
             swiftSettings: swiftSettings,
         ),
         .target(
@@ -191,6 +192,7 @@ let package = Package(
                 "XKit",
                 "XCLIUtils",
                 "PackLib",
+                "XcodeProjects",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "SystemPackage", package: "swift-system"),
                 .product(name: "Dependencies", package: "swift-dependencies"),

@@ -180,22 +180,8 @@ struct DevBuildCommand: AsyncParsableCommand {
 
         let finalURL: URL
         if ipa {
-            @Dependency(\.zipCompressor) var compressor
             finalURL = url.deletingPathExtension().appendingPathExtension("ipa")
-            let tmpDir = try TemporaryDirectory(name: "Payload")
-            let payloadDir = tmpDir.url
-            try FileManager.default.moveItem(at: url, to: payloadDir.appendingPathComponent(url.lastPathComponent))
-            let ipaURL = try await compressor.compress(directory: payloadDir) { progress in
-                if let progress {
-                    let percent = Int(progress * 100)
-                    d.out.print("\rPackaging... \(percent)%", terminator: "")
-                } else {
-                    d.out.print("\rPackaging...", terminator: "")
-                }
-            }
-            d.out.print()
-            try? FileManager.default.removeItem(at: finalURL)
-            try FileManager.default.moveItem(at: ipaURL, to: finalURL)
+            try await IPAPackager.package(app: url, to: finalURL)
         } else {
             finalURL = url
         }

@@ -8,6 +8,8 @@ xtool is a cross-platform (Linux/WSL/macOS) tool that replicates Xcode functiona
 
 ✅ Build a SwiftPM package into an iOS app
 
+✅ Build an Xcode project (e.g. exported from Unity) into an iOS app or IPA with `xtool xcodebuild`
+
 ✅ Sign and install iOS apps
 
 ✅ Interact with Apple Developer Services programmatically
@@ -44,6 +46,7 @@ CONFIGURATION SUBCOMMANDS:
 DEVELOPMENT SUBCOMMANDS:
   new                     Create a new xtool SwiftPM project
   dev                     Build and run an xtool SwiftPM project
+  xcodebuild              Build an Xcode project (.xcodeproj) into an iOS app or IPA
   ds                      Interact with Apple Developer Services
 
 DEVICE SUBCOMMANDS:

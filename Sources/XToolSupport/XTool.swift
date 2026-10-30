@@ -31,6 +31,7 @@ private struct XToolCommand: AsyncParsableCommand {
                 subcommands: [
                     NewCommand.self,
                     DevCommand.self,
+                    XcodeBuildCommand.self,
                     DSCommand.self,
                 ]
             ),
