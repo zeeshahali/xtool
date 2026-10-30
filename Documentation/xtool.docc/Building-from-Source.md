@@ -85,7 +85,7 @@ xtool links against the libimobiledevice libraries. It needs at least these vers
 sudo pacman -S --needed libplist libimobiledevice-glue libusbmuxd libtatsu libimobiledevice
 ```
 
-**Ubuntu/Debian** packages are older, so build them from source, in this order. These are the same tags the [Dockerfile](https://github.com/zeeshahali/xtool/blob/main/Dockerfile) uses:
+**Ubuntu/Debian** packages are older, so build them from source, in this order. These are the same tags the [Dockerfile](https://github.com/zeeshahali/xtool-with-unity-support/blob/main/Dockerfile) uses:
 
 ```bash
 build() { # repo, tag, extra configure flags
@@ -105,8 +105,8 @@ Don't build these over newer distro packages (as on Arch). That overwrites files
 ## Build and install
 
 ```bash
-git clone https://github.com/zeeshahali/xtool
-cd xtool
+git clone https://github.com/zeeshahali/xtool-with-unity-support
+cd xtool-with-unity-support
 swift build -c release --product xtool
 sudo install -m755 .build/release/xtool /usr/local/bin/xtool
 xtool --help
