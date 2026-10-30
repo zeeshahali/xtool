@@ -42,6 +42,16 @@ public struct XcodeToolchain: Sendable {
         self.swiftResourceDir = swiftResourceDir
     }
 
+    /// The arguments that make `libtool` write a static library of the objects listed in `fileList`.
+    ///
+    /// On Linux the Darwin SDK's toolset has no `libtool`, so `libtool` may be LLVM's `llvm-ar`, which
+    /// writes the same Darwin archive from a response file.
+    public func archiveArguments(output: URL, fileList: URL) -> [String] {
+        libtool.lastPathComponent.hasPrefix("llvm-ar")
+            ? ["rcs", "--format=darwin", output.path, "@\(fileList.path)"]
+            : ["-static", "-o", output.path, "-filelist", fileList.path]
+    }
+
     public var toolchainDir: URL {
         developerDir.appending(path: "Toolchains/XcodeDefault.xctoolchain")
     }
@@ -124,11 +134,15 @@ public struct XcodeToolchain: Sendable {
         let toolsetBin = darwinSDK.bundle.appending(path: "toolset/bin")
         let swiftc = try await BuildSettings.swiftcURL()
         let clang = try await ToolRegistry.locate("clang")
+        let toolsetLibtool = toolsetBin.appending(path: "libtool")
+        let libtool = FileManager.default.isExecutableFile(atPath: toolsetLibtool.path)
+            ? toolsetLibtool
+            : try await ToolRegistry.locate("llvm-ar")
         return XcodeToolchain(
             clang: clang,
             swiftc: URL(fileURLWithPath: swiftc.string),
             linker: toolsetBin.appending(path: "ld64.lld"),
-            libtool: toolsetBin.appending(path: "libtool"),
+            libtool: libtool,
             developerDir: developerDir,
             sdk: sdk,
             sdkVersion: sdkVersion(of: sdk),

@@ -171,6 +171,19 @@ private func makeBuilder(
         )
     }
 
+    @Test func stripsLikeAnXcodeArchive() {
+        func flags(_ values: [String: String]) -> [String] {
+            var settings = XcodeSettings()
+            settings.push(values)
+            return XcodeProjectBuilder.stripLinkerFlags(settings)
+        }
+        #expect(flags([:]) == ["-Xlinker", "-S", "-Xlinker", "-x"])
+        #expect(flags(["STRIP_STYLE": "non-global"]) == ["-Xlinker", "-S", "-Xlinker", "-x"])
+        #expect(flags(["STRIP_STYLE": "debugging"]) == ["-Xlinker", "-S"])
+        #expect(flags(["STRIP_INSTALLED_PRODUCT": "NO"]).isEmpty)
+        #expect(flags(["DEPLOYMENT_POSTPROCESSING": "NO"]).isEmpty)
+    }
+
     @Test func parsesUnityIl2CppScript() throws {
         // abridged from the GameAssembly "Run Script" phase Unity 2022.2+ generates
         let script = #"""
@@ -186,7 +199,48 @@ private func makeBuilder(
         #expect(parsed.additionalDefines == ["IL2CPP_DEBUG=0", "FOO=1"])
         #expect(parsed.incrementalGCTimeSlice == "3")
         #expect(parsed.configuration == "Release")
+        #expect(!parsed.staticLibIl2Cpp)
         #expect(UnityIl2CppScript(script: "echo hello") == nil)
+    }
+
+    @Test func archivesWithLlvmArWhenThereIsNoLibtool() {
+        func toolchain(_ archiver: String) -> XcodeToolchain {
+            XcodeToolchain(
+                clang: URL(fileURLWithPath: "/bin/clang"), swiftc: URL(fileURLWithPath: "/bin/swiftc"),
+                linker: nil, libtool: URL(fileURLWithPath: archiver),
+                developerDir: URL(fileURLWithPath: "/dev"), sdk: URL(fileURLWithPath: "/sdk"),
+                sdkVersion: "27.2", swiftResourceDir: nil
+            )
+        }
+        let output = URL(fileURLWithPath: "/out/libGameAssembly.a")
+        let list = URL(fileURLWithPath: "/tmp/il2cpp.LinkFileList")
+        #expect(toolchain("/usr/bin/llvm-ar").archiveArguments(output: output, fileList: list)
+            == ["rcs", "--format=darwin", "/out/libGameAssembly.a", "@/tmp/il2cpp.LinkFileList"])
+        #expect(toolchain("/toolset/bin/libtool").archiveArguments(output: output, fileList: list)
+            == ["-static", "-o", "/out/libGameAssembly.a", "-filelist", "/tmp/il2cpp.LinkFileList"])
+    }
+
+    @Test func parsesUnity63Il2CppArgsArray() throws {
+        // abridged from Unity 6000.3: the options are a bash array, one per line, expanded at the call
+        let script = #"""
+        IL2CPP="/proj/Il2CppOutputProject/IL2CPP/build/deploy_x86_64/il2cpp"
+        ARGS=(
+            --compile-cpp
+            --platform=iOS
+            --incremental-g-c-time-slice=3
+            --static-lib-il2-cpp
+            --generatedcppdir="Il2CppOutputProject/Source/il2cppOutput"
+            --outputpath="/build/Release-iphoneos/libGameAssembly.a"
+            --configuration=""
+            )
+        "$IL2CPP" "${ARGS[@]}"
+        """#
+        let parsed = try #require(UnityIl2CppScript(script: script))
+        #expect(parsed.generatedCppDir == "Il2CppOutputProject/Source/il2cppOutput")
+        #expect(parsed.outputPath == "/build/Release-iphoneos/libGameAssembly.a")
+        #expect(parsed.incrementalGCTimeSlice == "3")
+        #expect(parsed.configuration == nil)
+        #expect(parsed.staticLibIl2Cpp)
     }
 
     /// Builds the fixture end-to-end. Requires a Darwin SDK (`xtool setup`) on Linux, or Xcode on macOS.

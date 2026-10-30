@@ -204,6 +204,19 @@ public struct XcodeProjectBuilder: Sendable {
         return result
     }
 
+    /// The linker flags that strip a linked product the way an Xcode archive does.
+    ///
+    /// Xcode strips installed products (`STRIP_INSTALLED_PRODUCT`) only when `DEPLOYMENT_POSTPROCESSING`
+    /// is on, as it is for an archive. xtool builds products to install and ship, so that defaults on here.
+    /// ld64.lld can't remove global symbols, so `STRIP_STYLE = all` strips like `non-global`.
+    public static func stripLinkerFlags(_ settings: XcodeSettings) -> [String] {
+        guard settings.bool("DEPLOYMENT_POSTPROCESSING", default: true),
+              settings.bool("STRIP_INSTALLED_PRODUCT", default: true)
+        else { return [] }
+        let debugInfo = ["-Xlinker", "-S"]
+        return settings.string("STRIP_STYLE") == "debugging" ? debugInfo : debugInfo + ["-Xlinker", "-x"]
+    }
+
     /// Computes the build settings for a target.
     public func settings(for target: XcodeBuildModel.Target) throws -> XcodeSettings {
         let projectConfig = model.configuration(named: configurationName)

@@ -6,6 +6,7 @@ import XcodeProjects
 import XKit
 import Dependencies
 import XUtils
+import Subprocess
 
 struct XcodeBuildCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -156,13 +157,17 @@ struct XcodeBuildCommand: AsyncParsableCommand {
         }
 
         if let signingAuthToken {
+            // the installer holds its delegate weakly; keep it alive, or the revocation prompt is
+            // never shown and silently answers no
+            let signDelegate = XToolInstallerDelegate()
             let installer = IntegratedInstaller(
                 auth: signingAuthToken.authData(),
-                delegate: XToolInstallerDelegate()
+                delegate: signDelegate
             )
             do {
                 defer { d.out.print() }
                 try await installer.signInPlace(app: app)
+                withExtendedLifetime(signDelegate) {}
             } catch let error as CancellationError {
                 throw error
             } catch {
@@ -238,20 +243,21 @@ struct XcodeBuildCommand: AsyncParsableCommand {
 
 enum IPAPackager {
     /// Zips `app` into an IPA (`Payload/<app>`) at `destination`, consuming the app.
+    ///
+    /// Unlike the `zipCompressor` used to install apps, which stores files uncompressed for speed,
+    /// this deflates them: an IPA is meant to be shipped, and a stored one is several times larger.
     static func package(app: URL, to destination: URL) async throws {
-        @Dependency(\.zipCompressor) var compressor
         let tmpDir = try TemporaryDirectory(name: "Payload")
         let payloadDir = tmpDir.url
         try FileManager.default.moveItem(at: app, to: payloadDir.appendingPathComponent(app.lastPathComponent))
-        let ipaURL = try await compressor.compress(directory: payloadDir) { progress in
-            if let progress {
-                let percent = Int(progress * 100)
-                d.out.print("\rPackaging... \(percent)%", terminator: "")
-            } else {
-                d.out.print("\rPackaging...", terminator: "")
-            }
-        }
-        d.out.print()
+        let ipaURL = payloadDir.deletingLastPathComponent().appendingPathComponent("app.ipa")
+        d.out.print("Packaging...")
+        try await Subprocess.run(
+            .name("zip"),
+            arguments: ["-yqr", ipaURL.path, payloadDir.lastPathComponent],
+            workingDirectory: FilePath(payloadDir.deletingLastPathComponent()),
+            output: .discarded,
+        ).checkSuccess()
         try? FileManager.default.removeItem(at: destination)
         try FileManager.default.moveItem(at: ipaURL, to: destination)
     }

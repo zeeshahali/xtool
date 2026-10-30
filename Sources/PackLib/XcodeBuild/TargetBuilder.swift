@@ -562,7 +562,7 @@ extension TargetBuilder {
         if productType == ProductType.staticLibrary || productType == ProductType.staticFramework {
             log("Archiving \(output.lastPathComponent)")
             try? fileManager.removeItem(at: output)
-            try await runner.run(toolchain.libtool, ["-static", "-o", output.path, "-filelist", fileList.path])
+            try await runner.run(toolchain.libtool, toolchain.archiveArguments(output: output, fileList: fileList))
             return
         }
 
@@ -591,6 +591,7 @@ extension TargetBuilder {
         for path in searchPaths("FRAMEWORK_SEARCH_PATHS") { args += ["-F", path] }
         for path in settings.list("LD_RUNPATH_SEARCH_PATHS") { args += ["-Xlinker", "-rpath", "-Xlinker", path] }
         if settings.bool("DEAD_CODE_STRIPPING", default: true) { args.append("-dead_strip") }
+        args += XcodeProjectBuilder.stripLinkerFlags(settings)
         if settings.bool("CLANG_ENABLE_OBJC_ARC") { args.append("-fobjc-link-runtime") }
         if settings.bool("APPLICATION_EXTENSION_API_ONLY") { args.append("-fapplication-extension") }
 
