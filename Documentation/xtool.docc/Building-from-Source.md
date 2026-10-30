@@ -65,7 +65,7 @@ sudo pacman -S --needed base-devel git autoconf automake libtool pkgconf \
   openssl curl libxml2 zlib xz zip unzip usbmuxd
 ```
 
-`zip` and `unzip` are used at runtime to package and read IPAs. `usbmuxd` is only needed to talk to a connected device.
+`zip` and `unzip` are used at runtime to package and read IPAs. `usbmuxd` is only needed to talk to a connected device. It starts automatically when an iPhone is plugged in, so if the iPhone was already connected when you installed it, replug the iPhone or run `sudo systemctl start usbmuxd`.
 
 ### libimobiledevice
 
@@ -136,6 +136,7 @@ xtool sdk status
 ## Troubleshooting
 
 - **`error while loading shared libraries: libncurses.so.6` or `libxml2.so.2`** when running `swift`: see the Arch Linux note under Swift 6.4 above.
+- **`xtool devices` hangs at "Waiting for devices to be connected"** with an iPhone plugged in: `usbmuxd` isn't installed or isn't running. Check with `systemctl is-active usbmuxd`.
 - **`Could not find executable 'swiftc' in PATH`** from `xtool sdk` or `xtool xcodebuild`: load swiftly's environment in that shell (`. ~/.local/share/swiftly/env.sh`).
 - **Linting**: to run `make lint` on Linux, point SwiftLint at the toolchain's SourceKit:
   `LINUX_SOURCEKIT_LIB_PATH=~/.local/share/swiftly/toolchains/6.4.1/usr/lib make lint`

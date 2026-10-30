@@ -43,7 +43,9 @@ What you need:
 | **Xcode** | `Xcode.xip` 27.x, to create the Darwin SDK (no Mac needed) | Same |
 | **iPhone** | Not needed | Registered to your Apple developer team, to install |
 
-A free Apple ID works for signing, but its profiles expire after 7 days. See [Build Xcode Projects](Documentation/xtool.docc/Xcode-Projects.md) for options, signing and limitations, and [Building from source](Documentation/xtool.docc/Building-from-Source.md) for setup.
+Release builds also write dSYMs for crash symbolication, next to the build products (for example `build/Build/Products/Release-iphoneos/UnityFramework.framework.dSYM`), and the IPA is compressed and stripped like an Xcode archive.
+
+A free Apple ID works for signing, but its profiles expire after 7 days, and a device can hold at most 3 apps signed with free accounts. See [Build Xcode Projects](Documentation/xtool.docc/Xcode-Projects.md) for options, signing and limitations, and [Building from source](Documentation/xtool.docc/Building-from-Source.md) for setup.
 
 ## Examples
 

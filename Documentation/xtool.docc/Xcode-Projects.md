@@ -51,7 +51,9 @@ xtool install Game.ipa
 
 Without `--sign`, the IPA is unsigned (or ad-hoc signed if the target has `CODE_SIGN_ENTITLEMENTS`), ready for any signing step later in your pipeline.
 
-Like an Xcode archive, the IPA is compressed and its binaries are stripped of debug information and local symbols (following `STRIP_STYLE`). To keep symbols, pass `STRIP_INSTALLED_PRODUCT=NO`. No dSYM is generated.
+Like an Xcode archive, the IPA is compressed and its binaries are stripped of debug information and local symbols (following `STRIP_STYLE`). To keep symbols, pass `STRIP_INSTALLED_PRODUCT=NO`.
+
+Release builds also write a dSYM for each app and framework, for symbolicating crash reports: for example `build/Build/Products/Release-iphoneos/UnityFramework.framework.dSYM`. They're generated before stripping, so their UUIDs match the binaries in the IPA. Pass `DEBUG_INFORMATION_FORMAT=dwarf` to skip them.
 
 ## Signed builds
 
@@ -66,10 +68,26 @@ Like an Xcode archive, the IPA is compressed and its binaries are stripped of de
     xtool xcodebuild --sign --ipa -o Game.ipa
     ```
 
-    xtool creates or reuses a development certificate, registers the App ID for the bundle identifier, and embeds a development provisioning profile. Set the bundle identifier with `PRODUCT_BUNDLE_IDENTIFIER=...` if Unity's isn't one you can register.
-3. Install it on an iPhone. The profile covers only devices registered to your team. The easiest way is to connect the iPhone and run `xtool install Game.ipa`, which registers the device and installs the app. `xtool install` re-signs the app for that device, so it also accepts an unsigned IPA. `--sign` matters when you install the IPA some other way, or send it to someone else.
+    xtool creates or reuses a development certificate, registers an App ID, and embeds a development provisioning profile. The App ID is your bundle identifier with an `XTL-<team ID>.` prefix (for example `XTL-ABCDE12345.com.example.game`), so it can't clash with an App ID registered elsewhere. Features tied to your real bundle identifier, such as in-app purchases, push notifications and Game Center, won't match your App Store Connect setup.
+3. Install it on an iPhone. The profile covers only the devices registered to your team **when the IPA was signed**. The easiest way is to connect the iPhone and run `xtool install Game.ipa`, which registers the device, re-signs the app for it and installs it. Because it re-signs, `xtool install` also accepts an unsigned IPA. `--sign` matters when you install the IPA some other way, such as AltStore, Sideloadly or Files, or send it to someone else.
+
+    Installing over USB needs `usbmuxd` running (see <doc:Building-from-Source>). Check that `xtool devices` lists the iPhone, and tap **Trust** on the phone when asked. iOS also only runs development-signed apps with **Developer Mode** on (**Settings > Privacy & Security > Developer Mode**).
 
 These are development builds, for installing on your own devices. App Store and TestFlight distribution builds aren't supported.
+
+### Free Apple ID limits
+
+Apple restricts apps signed with a free Apple ID:
+
+- **Profiles expire after 7 days.** Rebuild and reinstall weekly.
+- **At most 3 apps per device.** This counts every app signed with a free account, including AltStore, LiveContainer, and apps from other people's Apple IDs. Installing a fourth fails with `ApplicationVerificationFailed: This device has reached the maximum number of installed apps using a free developer profile`, followed by the App IDs taking up the slots. Remove one with `xtool uninstall <bundle-id>`, or on the phone, then install again.
+
+A paid Apple Developer Program membership lifts both limits.
+
+### Troubleshooting signed builds
+
+- **"The integrity of this app could not be verified"** on the iPhone: the profile doesn't include that device, usually because the IPA was signed before the device was registered and then installed another way. Install it with `xtool install` while the iPhone is connected, or connect it once that way and rebuild with `--sign`.
+- **`HTTPClientError.deadlineExceeded`** while provisioning: Apple's developer servers timed out. Run the build again. Nothing is recompiled.
 
 Builds are incremental: object files are reused when their sources, included headers, and compiler flags are unchanged. Use `-j` to control parallelism and `--build-dir` to choose where intermediates go.
 
