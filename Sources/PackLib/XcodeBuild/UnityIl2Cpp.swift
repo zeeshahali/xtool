@@ -14,6 +14,9 @@ public struct UnityIl2CppScript: Equatable, Sendable {
     /// Whether the IL2CPP runtime goes into its own `il2cpp.a` beside the output (`--static-lib-il2-cpp`,
     /// Unity 6.3) instead of into the output library itself.
     public var staticLibIl2Cpp: Bool
+    /// A prebuilt IL2CPP runtime (`--external-lib-il2-cpp`, older exports' `Libraries/libil2cpp.a`)
+    /// that is linked separately, so the runtime must not be compiled from source as well.
+    public var externalLibIl2Cpp: String?
 
     /// Parses the il2cpp invocation from an (already macro-expanded) script, or nil if it isn't one.
     public init?(script: String) {
@@ -48,6 +51,7 @@ public struct UnityIl2CppScript: Equatable, Sendable {
         self.configuration = options["configuration"].flatMap { $0.isEmpty ? nil : $0 }
         // a bare flag: present with no value
         self.staticLibIl2Cpp = options["static-lib-il2-cpp"] != nil
+        self.externalLibIl2Cpp = options["external-lib-il2-cpp"].flatMap { $0.isEmpty ? nil : $0 }
     }
 }
 
@@ -139,6 +143,12 @@ extension TargetBuilder {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         }
         let output = url(script.outputPath)
+        if let external = script.externalLibIl2Cpp, FileManager.default.fileExists(atPath: url(external).path) {
+            // the project links the prebuilt runtime itself; compiling it too would duplicate every symbol
+            try await runCompileJobs(gameJobs)
+            try await archive(gameJobs, as: output)
+            return
+        }
         if !script.staticLibIl2Cpp { gameJobs += runtimeJobs }
         try await runCompileJobs(gameJobs + (script.staticLibIl2Cpp ? runtimeJobs : []))
         try await archive(gameJobs, as: output)

@@ -208,7 +208,8 @@ private func makeBuilder(
         chmod +x "$IL2CPP"
         "$IL2CPP" --compile-cpp --platform=iOS --additional-defines=IL2CPP_DEBUG=0,FOO=1 \
         --incremental-g-c-time-slice=3 --generatedcppdir="Il2CppOutputProject/Source/il2cppOutput" \
-        --outputpath="/build/Release-iphoneos/libGameAssembly.a" --configuration=Release
+        --outputpath="/build/Release-iphoneos/libGameAssembly.a" --configuration=Release \
+        --external-lib-il2-cpp="/proj/Libraries/libil2cpp.a"
         """#.replacingOccurrences(of: "\\\n", with: "")
         let parsed = try #require(UnityIl2CppScript(script: script))
         #expect(parsed.generatedCppDir == "Il2CppOutputProject/Source/il2cppOutput")
@@ -217,6 +218,7 @@ private func makeBuilder(
         #expect(parsed.incrementalGCTimeSlice == "3")
         #expect(parsed.configuration == "Release")
         #expect(!parsed.staticLibIl2Cpp)
+        #expect(parsed.externalLibIl2Cpp == "/proj/Libraries/libil2cpp.a")
         #expect(UnityIl2CppScript(script: "echo hello") == nil)
     }
 

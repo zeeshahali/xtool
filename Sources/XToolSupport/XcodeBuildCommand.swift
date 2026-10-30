@@ -145,13 +145,13 @@ struct XcodeBuildCommand: AsyncParsableCommand {
         try FileManager.default.copyItem(at: product.url, to: app)
 
         if let entitlementsURL = product.entitlements {
-            let data = try Data(contentsOf: entitlementsURL)
-            let entitlements = try PropertyListDecoder().decode(Entitlements.self, from: data)
+            let entitlements = try Data(contentsOf: entitlementsURL)
             d.out.print("Applying entitlements...")
-            try await Signer.first().sign(
+            try await d.signer.sign(
                 app: app,
                 identity: .adhoc,
                 entitlementMapping: [app: entitlements],
+                deep: true,
                 progress: { _ in }
             )
         }
