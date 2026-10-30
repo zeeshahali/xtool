@@ -591,7 +591,10 @@ extension TargetBuilder {
         for path in searchPaths("FRAMEWORK_SEARCH_PATHS") { args += ["-F", path] }
         for path in settings.list("LD_RUNPATH_SEARCH_PATHS") { args += ["-Xlinker", "-rpath", "-Xlinker", path] }
         if settings.bool("DEAD_CODE_STRIPPING", default: true) { args.append("-dead_strip") }
-        args += XcodeProjectBuilder.stripLinkerFlags(settings)
+        // a dSYM is generated from the debug map in the unstripped binary, which is stripped afterwards;
+        // otherwise the linker strips it
+        let dsym = dsymURL
+        if dsym == nil { args += XcodeProjectBuilder.stripLinkerFlags(settings) }
         if settings.bool("CLANG_ENABLE_OBJC_ARC") { args.append("-fobjc-link-runtime") }
         if settings.bool("APPLICATION_EXTENSION_API_ONLY") { args.append("-fapplication-extension") }
 
@@ -614,6 +617,24 @@ extension TargetBuilder {
 
         log("Linking \(output.lastPathComponent)")
         try await runner.run(toolchain.clang, XcodeProjectBuilder.filterLinkerFlags(args))
+
+        if let dsym, let dsymutil = toolchain.dsymutil, let strip = toolchain.strip {
+            log("Generating \(dsym.lastPathComponent)")
+            try? fileManager.removeItem(at: dsym)
+            try await runner.run(dsymutil, [output.path, "-o", dsym.path])
+            if let style = XcodeProjectBuilder.stripStyle(settings) {
+                try await runner.run(strip, toolchain.stripArguments(style, binary: output))
+            }
+        }
+    }
+
+    /// Where to write the product's dSYM (`DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`), or nil if it has
+    /// none or the toolchain can't generate one.
+    private var dsymURL: URL? {
+        guard settings.string("DEBUG_INFORMATION_FORMAT") == "dwarf-with-dsym",
+              toolchain.dsymutil != nil, toolchain.strip != nil
+        else { return nil }
+        return builtProductsDir.appending(path: settings.string("FULL_PRODUCT_NAME") + ".dSYM")
     }
 
     private func linkArguments(for input: BuildFile) throws -> [String] {

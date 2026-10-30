@@ -21,6 +21,11 @@ public struct XcodeToolchain: Sendable {
     public var sdkVersion: String
     /// The Swift resource directory to pass to swiftc, if non-default.
     public var swiftResourceDir: URL?
+    /// `dsymutil`, to generate dSYMs, or nil if unavailable.
+    public var dsymutil: URL?
+    /// A tool that strips a linked binary in place without changing its UUID: Apple's `strip`, or
+    /// LLVM's `llvm-objcopy`. Nil if unavailable.
+    public var strip: URL?
 
     public init(
         clang: URL,
@@ -30,7 +35,9 @@ public struct XcodeToolchain: Sendable {
         developerDir: URL,
         sdk: URL,
         sdkVersion: String,
-        swiftResourceDir: URL?
+        swiftResourceDir: URL?,
+        dsymutil: URL? = nil,
+        strip: URL? = nil
     ) {
         self.clang = clang
         self.swiftc = swiftc
@@ -40,6 +47,18 @@ public struct XcodeToolchain: Sendable {
         self.sdk = sdk
         self.sdkVersion = sdkVersion
         self.swiftResourceDir = swiftResourceDir
+        self.dsymutil = dsymutil
+        self.strip = strip
+    }
+
+    /// The arguments that make `strip` strip `binary` in place in the given style.
+    public func stripArguments(_ style: XcodeProjectBuilder.StripStyle, binary: URL) -> [String] {
+        let llvm = strip?.lastPathComponent.hasPrefix("llvm-objcopy") ?? false
+        let flags = switch style {
+        case .debugging: llvm ? ["--strip-debug"] : ["-S"]
+        case .nonGlobal: llvm ? ["--strip-debug", "--discard-all"] : ["-S", "-x"]
+        }
+        return flags + [binary.path]
     }
 
     /// The arguments that make `libtool` write a static library of the objects listed in `fileList`.
@@ -118,7 +137,9 @@ public struct XcodeToolchain: Sendable {
             developerDir: URL(fileURLWithPath: developerDir),
             sdk: sdk,
             sdkVersion: sdkVersion(of: sdk),
-            swiftResourceDir: nil
+            swiftResourceDir: nil,
+            dsymutil: URL(fileURLWithPath: try await xcrun(["--sdk", "iphoneos", "-f", "dsymutil"])),
+            strip: URL(fileURLWithPath: try await xcrun(["--sdk", "iphoneos", "-f", "strip"]))
         )
         #else
         let darwinSDK = try DarwinSDK.current()
@@ -138,6 +159,7 @@ public struct XcodeToolchain: Sendable {
         let libtool = FileManager.default.isExecutableFile(atPath: toolsetLibtool.path)
             ? toolsetLibtool
             : try await ToolRegistry.locate("llvm-ar")
+        let dsymutil = toolsetBin.appending(path: "dsymutil")
         return XcodeToolchain(
             clang: clang,
             swiftc: URL(fileURLWithPath: swiftc.string),
@@ -146,7 +168,9 @@ public struct XcodeToolchain: Sendable {
             developerDir: developerDir,
             sdk: sdk,
             sdkVersion: sdkVersion(of: sdk),
-            swiftResourceDir: developerDir.appending(path: "Toolchains/XcodeDefault.xctoolchain/usr/lib/swift")
+            swiftResourceDir: developerDir.appending(path: "Toolchains/XcodeDefault.xctoolchain/usr/lib/swift"),
+            dsymutil: FileManager.default.isExecutableFile(atPath: dsymutil.path) ? dsymutil : nil,
+            strip: try? await ToolRegistry.locate("llvm-objcopy")
         )
         #endif
     }

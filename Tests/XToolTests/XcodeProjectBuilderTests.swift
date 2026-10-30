@@ -184,6 +184,23 @@ private func makeBuilder(
         #expect(flags(["DEPLOYMENT_POSTPROCESSING": "NO"]).isEmpty)
     }
 
+    @Test func stripsInPlaceWithStripOrObjcopy() {
+        func toolchain(_ strip: String) -> XcodeToolchain {
+            XcodeToolchain(
+                clang: URL(fileURLWithPath: "/bin/clang"), swiftc: URL(fileURLWithPath: "/bin/swiftc"),
+                linker: nil, libtool: URL(fileURLWithPath: "/bin/libtool"),
+                developerDir: URL(fileURLWithPath: "/dev"), sdk: URL(fileURLWithPath: "/sdk"),
+                sdkVersion: "27.2", swiftResourceDir: nil, strip: URL(fileURLWithPath: strip)
+            )
+        }
+        let binary = URL(fileURLWithPath: "/out/Game")
+        #expect(toolchain("/bin/llvm-objcopy").stripArguments(.nonGlobal, binary: binary)
+            == ["--strip-debug", "--discard-all", "/out/Game"])
+        #expect(toolchain("/bin/llvm-objcopy").stripArguments(.debugging, binary: binary)
+            == ["--strip-debug", "/out/Game"])
+        #expect(toolchain("/usr/bin/strip").stripArguments(.nonGlobal, binary: binary) == ["-S", "-x", "/out/Game"])
+    }
+
     @Test func parsesUnityIl2CppScript() throws {
         // abridged from the GameAssembly "Run Script" phase Unity 2022.2+ generates
         let script = #"""

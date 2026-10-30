@@ -204,17 +204,33 @@ public struct XcodeProjectBuilder: Sendable {
         return result
     }
 
-    /// The linker flags that strip a linked product the way an Xcode archive does.
+    /// How a linked product is stripped.
+    public enum StripStyle: Sendable {
+        /// Debug information only (`STRIP_STYLE = debugging`).
+        case debugging
+        /// Debug information and local symbols. Neither ld64.lld nor llvm-objcopy can remove the global
+        /// symbols `STRIP_STYLE = all` also would, so it strips like `non-global`.
+        case nonGlobal
+    }
+
+    /// How to strip a linked product the way an Xcode archive does, or nil not to strip it.
     ///
     /// Xcode strips installed products (`STRIP_INSTALLED_PRODUCT`) only when `DEPLOYMENT_POSTPROCESSING`
     /// is on, as it is for an archive. xtool builds products to install and ship, so that defaults on here.
-    /// ld64.lld can't remove global symbols, so `STRIP_STYLE = all` strips like `non-global`.
-    public static func stripLinkerFlags(_ settings: XcodeSettings) -> [String] {
+    public static func stripStyle(_ settings: XcodeSettings) -> StripStyle? {
         guard settings.bool("DEPLOYMENT_POSTPROCESSING", default: true),
               settings.bool("STRIP_INSTALLED_PRODUCT", default: true)
-        else { return [] }
-        let debugInfo = ["-Xlinker", "-S"]
-        return settings.string("STRIP_STYLE") == "debugging" ? debugInfo : debugInfo + ["-Xlinker", "-x"]
+        else { return nil }
+        return settings.string("STRIP_STYLE") == "debugging" ? .debugging : .nonGlobal
+    }
+
+    /// The linker flags that strip a linked product the way an Xcode archive does.
+    public static func stripLinkerFlags(_ settings: XcodeSettings) -> [String] {
+        switch stripStyle(settings) {
+        case nil: []
+        case .debugging: ["-Xlinker", "-S"]
+        case .nonGlobal: ["-Xlinker", "-S", "-Xlinker", "-x"]
+        }
     }
 
     /// Computes the build settings for a target.
@@ -347,7 +363,8 @@ public struct XcodeProjectBuilder: Sendable {
             "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
             "GCC_ENABLE_CPP_RTTI": "YES",
             "GCC_ENABLE_OBJC_EXCEPTIONS": "YES",
-            "DEBUG_INFORMATION_FORMAT": "dwarf",
+            // like Xcode's project templates: dSYMs for release builds
+            "DEBUG_INFORMATION_FORMAT": isDebug ? "dwarf" : "dwarf-with-dsym",
             "GCC_GENERATE_DEBUGGING_SYMBOLS": "YES",
             "DYLIB_INSTALL_NAME_BASE": "@rpath",
             "LD_DYLIB_INSTALL_NAME": "$(DYLIB_INSTALL_NAME_BASE:standardizepath)/$(EXECUTABLE_PATH)",
