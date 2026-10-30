@@ -171,6 +171,24 @@ private func makeBuilder(
         )
     }
 
+    @Test func parsesUnityIl2CppScript() throws {
+        // abridged from the GameAssembly "Run Script" phase Unity 2022.2+ generates
+        let script = #"""
+        IL2CPP="/proj/Il2CppOutputProject/IL2CPP/build/deploy_arm64/il2cpp"
+        chmod +x "$IL2CPP"
+        "$IL2CPP" --compile-cpp --platform=iOS --additional-defines=IL2CPP_DEBUG=0,FOO=1 \
+        --incremental-g-c-time-slice=3 --generatedcppdir="Il2CppOutputProject/Source/il2cppOutput" \
+        --outputpath="/build/Release-iphoneos/libGameAssembly.a" --configuration=Release
+        """#.replacingOccurrences(of: "\\\n", with: "")
+        let parsed = try #require(UnityIl2CppScript(script: script))
+        #expect(parsed.generatedCppDir == "Il2CppOutputProject/Source/il2cppOutput")
+        #expect(parsed.outputPath == "/build/Release-iphoneos/libGameAssembly.a")
+        #expect(parsed.additionalDefines == ["IL2CPP_DEBUG=0", "FOO=1"])
+        #expect(parsed.incrementalGCTimeSlice == "3")
+        #expect(parsed.configuration == "Release")
+        #expect(UnityIl2CppScript(script: "echo hello") == nil)
+    }
+
     /// Builds the fixture end-to-end. Requires a Darwin SDK (`xtool setup`) on Linux, or Xcode on macOS.
     @Test(.enabled(if: XcodeProjectBuilderTests.hasToolchain))
     func buildsUnityLikeProject() async throws {

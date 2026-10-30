@@ -20,10 +20,10 @@ struct TargetBuilder: Sendable {
     private var productType: String { target.productType }
     private var isWrapper: Bool { !settings.string("WRAPPER_EXTENSION").isEmpty }
 
-    private var builtProductsDir: URL { url(settings.string("BUILT_PRODUCTS_DIR")) }
-    private var tempDir: URL { url(settings.string("TARGET_TEMP_DIR")) }
+    var builtProductsDir: URL { url(settings.string("BUILT_PRODUCTS_DIR")) }
+    var tempDir: URL { url(settings.string("TARGET_TEMP_DIR")) }
     private var derivedDir: URL { url(settings.string("DERIVED_FILE_DIR")) }
-    private var objectsDir: URL { url(settings.string("OBJECT_FILE_DIR")).appending(path: "arm64") }
+    var objectsDir: URL { url(settings.string("OBJECT_FILE_DIR")).appending(path: "arm64") }
 
     /// The product's location, e.g. `.../Release-iphoneos/Unity-iPhone.app`.
     private var productURL: URL { builtProductsDir.appending(path: settings.string("FULL_PRODUCT_NAME")) }
@@ -31,7 +31,7 @@ struct TargetBuilder: Sendable {
     private var contentsURL: URL { builtProductsDir.appending(path: settings.string("CONTENTS_FOLDER_PATH")) }
     private var executableURL: URL { builtProductsDir.appending(path: settings.string("EXECUTABLE_PATH")) }
 
-    private func url(_ path: String) -> URL {
+    func url(_ path: String) -> URL {
         URL(fileURLWithPath: path, relativeTo: model.sourceRoot).standardizedFileURL
     }
 
@@ -260,7 +260,7 @@ struct TargetBuilder: Sendable {
         var isObjC: Bool { self == .objc || self == .objcxx }
     }
 
-    private struct CompileJob: Sendable {
+    struct CompileJob: Sendable {
         var source: URL
         var object: URL
         var arguments: [String]
@@ -304,6 +304,13 @@ struct TargetBuilder: Sendable {
 
         try prepareHeaderMap()
 
+        try await runCompileJobs(jobs)
+        result.objects += jobs.map(\.object)
+        return result
+    }
+
+    /// Compiles jobs in parallel, skipping those that are up to date.
+    func runCompileJobs(_ jobs: [CompileJob]) async throws {
         let pending = jobs.filter { !isUpToDate($0) }
         if !jobs.isEmpty {
             log("Compiling \(pending.count) of \(jobs.count) source files (\(options.jobs) jobs)")
@@ -321,8 +328,6 @@ struct TargetBuilder: Sendable {
                 log("  [\(done)/\(counter.total)] compiled")
             }
         }
-        result.objects += jobs.map(\.object)
-        return result
     }
 
     private actor ProgressCounter {
@@ -387,12 +392,12 @@ struct TargetBuilder: Sendable {
         }
     }
 
-    private var deploymentTarget: String {
+    var deploymentTarget: String {
         let value = settings.string("IPHONEOS_DEPLOYMENT_TARGET")
         return value.isEmpty ? "15.0" : value
     }
 
-    private var targetTriple: String { "arm64-apple-ios\(deploymentTarget)" }
+    var targetTriple: String { "arm64-apple-ios\(deploymentTarget)" }
 
     // swiftlint:disable:next cyclomatic_complexity
     private func clangArguments(language: Language) -> [String] {
@@ -789,6 +794,11 @@ extension TargetBuilder {
     private func runScript(_ phase: XcodeBuildModel.ShellScriptPhase) async throws {
         let name = phase.name ?? "Run Script"
         if phase.deploymentPostprocessingOnly && !settings.bool("DEPLOYMENT_POSTPROCESSING") { return }
+        if let il2cpp = UnityIl2CppScript(script: settings.expand(phase.script)) {
+            // Unity's il2cpp tool is macOS/Windows-only; compile its generated C++ natively instead
+            try await compileIl2Cpp(il2cpp)
+            return
+        }
         guard options.runScripts else {
             log("warning: skipping build phase '\(name)' (pass --run-scripts to run script phases)")
             return

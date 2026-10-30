@@ -41,6 +41,8 @@ Without `--sign`, the IPA is unsigned (or ad-hoc signed if the target has `CODE_
 
 Builds are incremental: object files are reused when their sources, included headers, and compiler flags are unchanged. Use `-j` to control parallelism and `--build-dir` to choose where intermediates go.
 
+> Tip: If your Unity export is stored in Git LFS, make sure the large files (`Libraries/*.a`, `Data/*`) are actually downloaded (`git lfs pull`), not LFS pointer files.
+
 ## What's supported
 
 - Build settings with `$(inherited)`, macro expansion, conditional settings (`[sdk=iphoneos*]`) and `.xcconfig` files
@@ -51,7 +53,8 @@ Builds are incremental: object files are reused when their sources, included hea
 - Linking against SDK frameworks, `.a`, `.tbd`, `.framework` and `.xcframework` files
 - Resources, including folder references (like Unity's `Data` folder) and localized `.lproj` files
 - Copy Files phases (e.g. "Embed Frameworks")
-- Run Script phases, when `--run-scripts` is passed (they're skipped by default since they often call macOS-only tools)
+- Unity's IL2CPP step: the `GameAssembly` target's script runs Unity's `il2cpp` tool, which only works on macOS/Windows. xtool recognizes it and compiles the generated C++ (`Il2CppOutputProject/Source/il2cppOutput`) into `libGameAssembly.a` itself
+- Other Run Script phases, when `--run-scripts` is passed (they're skipped by default since they often call macOS-only tools)
 
 ## Limitations
 
