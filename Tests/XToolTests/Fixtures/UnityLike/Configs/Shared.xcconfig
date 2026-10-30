@@ -1,0 +1,4 @@
+// project-level xcconfig
+GCC_PREPROCESSOR_DEFINITIONS = FROM_XCCONFIG=1 $(inherited)
+OTHER_CFLAGS[sdk=iphoneos*] = -DIOS_DEVICE=1
+OTHER_CFLAGS[sdk=iphonesimulator*] = -DIOS_DEVICE=0
