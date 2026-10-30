@@ -115,6 +115,15 @@ xtool --help
 
 The first build downloads dependencies and takes several minutes. Later builds are incremental.
 
+`xtool --version` reports the git commit it was built from, but SwiftPM caches that value and doesn't update it when you pull or commit. To stamp the current commit when updating, set it explicitly:
+
+```bash
+git pull
+XTOOL_VERSION="commit $(git rev-parse HEAD)" swift build -c release --product xtool
+sudo install -m755 .build/release/xtool /usr/local/bin/xtool
+xtool --version
+```
+
 The installed binary loads Swift's runtime libraries from the toolchain it was built with (for example `~/.local/share/swiftly/toolchains/6.4.1`). Keep that toolchain installed, or rebuild xtool after changing toolchains.
 
 ## Set up the iOS SDK
