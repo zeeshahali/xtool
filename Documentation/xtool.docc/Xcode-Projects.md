@@ -8,6 +8,18 @@ Build an existing `.xcodeproj` — such as one exported by Unity — into an iOS
 
 > Note: You need the Darwin SDK on Linux/WSL. Run `xtool setup` first if you haven't already.
 
+## What you need
+
+| | Unsigned IPA | Signed IPA |
+|---|---|---|
+| **Linux** | xtool, Swift 6.4, `zip`, Darwin SDK | Same, plus an Apple ID (`xtool auth`) |
+| **Windows** | WSL 2 with the Linux requirements | Same, plus an Apple ID (`xtool auth`) |
+| **Unity** | Unity Editor with **iOS Build Support** to export the project | Same |
+| **Xcode** | `Xcode.xip` 27.x to create the Darwin SDK (no Mac needed) | Same |
+| **iPhone** | Not needed | Must be registered to your Apple developer team to install the IPA |
+
+See <doc:Building-from-Source> to install xtool and these prerequisites. The Unity Editor can run on Windows, macOS or Linux. Only its export step is used, and you can run that on a different machine from the build.
+
 ## Building a Unity project
 
 1. In Unity, choose **File > Build Settings > iOS > Build** to export the Xcode project (for example, into `Builds/iOS`).
@@ -18,7 +30,7 @@ cd Builds/iOS
 xtool xcodebuild --ipa
 ```
 
-This builds the first application target (`Unity-iPhone`) and its dependencies (`UnityFramework`) using the project's default configuration, and writes `build/Unity-iPhone.ipa`.
+This builds the first application target (`Unity-iPhone`) and its dependencies (`GameAssembly`, `UnityFramework`) using the project's default configuration, and writes `build/<ProductName>.ipa` (named after the app, for example `build/MyGame.ipa`).
 
 Common options:
 
@@ -38,6 +50,26 @@ xtool install Game.ipa
 ```
 
 Without `--sign`, the IPA is unsigned (or ad-hoc signed if the target has `CODE_SIGN_ENTITLEMENTS`), ready for any signing step later in your pipeline.
+
+Like an Xcode archive, the IPA is compressed and its binaries are stripped of debug information and local symbols (following `STRIP_STYLE`). To keep symbols, pass `STRIP_INSTALLED_PRODUCT=NO`. No dSYM is generated.
+
+## Signed builds
+
+`--sign` signs the app with your Apple ID, on Linux and Windows (WSL) alike:
+
+1. Sign in once with `xtool auth` (or `xtool setup`). Either login mode works:
+    - **API Key** needs a paid Apple Developer Program membership.
+    - **Password** works with a free Apple ID. Apple limits free accounts: their provisioning profiles expire after 7 days, so you rebuild and reinstall weekly.
+2. Build with `--sign`:
+
+    ```bash
+    xtool xcodebuild --sign --ipa -o Game.ipa
+    ```
+
+    xtool creates or reuses a development certificate, registers the App ID for the bundle identifier, and embeds a development provisioning profile. Set the bundle identifier with `PRODUCT_BUNDLE_IDENTIFIER=...` if Unity's isn't one you can register.
+3. Install it on an iPhone. The profile covers only devices registered to your team. The easiest way is to connect the iPhone and run `xtool install Game.ipa`, which registers the device and installs the app. `xtool install` re-signs the app for that device, so it also accepts an unsigned IPA. `--sign` matters when you install the IPA some other way, or send it to someone else.
+
+These are development builds, for installing on your own devices. App Store and TestFlight distribution builds aren't supported.
 
 Builds are incremental: object files are reused when their sources, included headers, and compiler flags are unchanged. Use `-j` to control parallelism and `--build-dir` to choose where intermediates go.
 

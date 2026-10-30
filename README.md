@@ -8,7 +8,7 @@ xtool is a cross-platform (Linux/WSL/macOS) tool that replicates Xcode functiona
 
 ✅ Build a SwiftPM package into an iOS app
 
-✅ Build an Xcode project (e.g. exported from Unity) into an iOS app or IPA with `xtool xcodebuild`
+✅ Build an Xcode project (e.g. exported from Unity) into an iOS app or IPA with `xtool xcodebuild`, signed or unsigned, on Linux and Windows without a Mac
 
 ✅ Sign and install iOS apps
 
@@ -19,7 +19,31 @@ xtool is a cross-platform (Linux/WSL/macOS) tool that replicates Xcode functiona
 1. Follow the guide to install `xtool`
     - [Installation (Linux/Windows)](https://xtool.sh/documentation/xtooldocs/installation-linux)
     - [Installation (macOS)](https://xtool.sh/documentation/xtooldocs/installation-macos)
+    - [Building from source (Linux/Windows)](Documentation/xtool.docc/Building-from-Source.md): prerequisites and steps, needed for `xtool xcodebuild` until it's released
 2. Create and run your first xtool-powered app by following the [tutorial](https://xtool.sh/tutorials/xtooldocs/first-app)!
+
+## Building Unity projects for iOS
+
+Export your Unity project for iOS (**File > Build Settings > iOS > Build**), then build it on Linux or Windows (WSL):
+
+```bash
+cd Builds/iOS
+xtool xcodebuild --ipa                    # unsigned IPA
+xtool xcodebuild --sign --ipa -o Game.ipa # signed with your Apple ID (after `xtool auth`)
+xtool install Game.ipa                    # install on a connected iPhone
+```
+
+What you need:
+
+| | Unsigned IPA | Signed IPA |
+|---|---|---|
+| **Linux** | xtool, Swift 6.4, `zip`, Darwin SDK | Same, plus an Apple ID (`xtool auth`) |
+| **Windows** | WSL 2 with the Linux requirements | Same, plus an Apple ID (`xtool auth`) |
+| **Unity** | Unity Editor with iOS Build Support | Same |
+| **Xcode** | `Xcode.xip` 27.x, to create the Darwin SDK (no Mac needed) | Same |
+| **iPhone** | Not needed | Registered to your Apple developer team, to install |
+
+A free Apple ID works for signing, but its profiles expire after 7 days. See [Build Xcode Projects](Documentation/xtool.docc/Xcode-Projects.md) for options, signing and limitations, and [Building from source](Documentation/xtool.docc/Building-from-Source.md) for setup.
 
 ## Examples
 

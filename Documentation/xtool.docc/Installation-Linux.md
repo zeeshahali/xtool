@@ -6,6 +6,8 @@ Set up xtool for iOS app development on Linux or Windows.
 
 This article outlines the steps to install `xtool` and begin developing iOS apps on Linux (or Windows via WSL).
 
+> Note: To build Unity or other Xcode projects with `xtool xcodebuild` before it's in a release, build xtool from source instead. See <doc:Building-from-Source>.
+
 ## Prerequisites
 
 ### WSL (for Windows users)
